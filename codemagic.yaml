@@ -22,8 +22,8 @@ workflows:
         - tag
       branch_patterns:
         - pattern: master
-        include: true
-        source: true
+          include: true
+          source: true
 
     scripts:
       - name: Tools version
