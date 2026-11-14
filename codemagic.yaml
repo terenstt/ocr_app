@@ -6,7 +6,7 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
-      cocooapods: default
+      cocoapods: default
 
       groups:
         - shared_vars
