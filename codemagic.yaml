@@ -1,0 +1,59 @@
+workflows:
+  ios-build-app:
+    name: iOS build Workflow
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocooapods: default
+
+      groups:
+        - shared_vars
+      
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+
+    triggering:
+      events:
+        - push
+        - tag
+      branch_patterns:
+        - pattern: master
+        include: true
+        source: true
+
+    scripts:
+      - name: Tools version
+        script: |
+          flutter --version
+          xcodebuild --version
+      - name: Get Flutter dependencies
+        script: |
+          flutter pub get
+      - name: Get CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa \
+            --release \
+            --no-codesign \
+            --build-name=1.0.0 \
+            --build-number=$CM_BUILD_NUMBER
+
+    artifacts:
+      - build/ios/iphoneos/*.app
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      email:
+        recipients:
+          - terens.t17@gmail.com
+        notify:
+          success: true
+          failure: true
+    
