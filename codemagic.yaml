@@ -29,7 +29,7 @@ workflows:
       - name: Tools version
         script: |
           flutter --version
-          xcodebuild --version
+          xcodebuild -version
       - name: Get Flutter dependencies
         script: |
           flutter pub get
