@@ -6,23 +6,17 @@ import 'package:material_ui/material_ui.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await _setupModelInitially();
-  final cameras = await availableCameras();
-  final backCamera = cameras.firstWhere(
-    (camera) => camera.lensDirection == CameraLensDirection.back,
-  );
-
-  runApp(MyApp(camera: backCamera));
+  runApp(const MyApp());
 }
 
-Future<void> _setupModelInitially() async {
+Future<void> _setupModelInitially(ValueNotifier<int> onProgress) async {
   await FlutterEdgeAi.initialize(
     inferenceEngines: [LiteRtLmEngine()],
-    huggingFaceToken:
-        const String.fromEnvironment("HUGGINGFACE_TOKEN").isNotEmpty
-        ? const String.fromEnvironment("HUGGINGFACE_TOKEN")
-        : null,
-    maxDownloadRetries: 10,
+    // huggingFaceToken:
+    //     const String.fromEnvironment("HUGGINGFACE_TOKEN").isNotEmpty
+    //     ? const String.fromEnvironment("HUGGINGFACE_TOKEN")
+    //     : null,
+    // maxDownloadRetries: 10,
   );
 
   final resolved = await FlutterEdgeAi.resolveHuggingFace(
@@ -34,20 +28,92 @@ Future<void> _setupModelInitially() async {
     modelType: resolved.modelType ?? ModelType.general,
     fileType: ModelFileType.litertlm,
   ).fromNetwork(resolved.url).withProgress((progress) {
-    // TODO: show something more visual
-    print('Download: $progress%.');
+    onProgress.value = progress;
   }).install();
 }
 
-class MyApp extends StatelessWidget {
-  final CameraDescription camera;
+Future<CameraDescription> _setupModelAndGetCamera(
+  ValueNotifier<int> onProgress,
+) async {
+  await _setupModelInitially(onProgress);
 
-  const MyApp({super.key, required this.camera});
+  final cameras = await availableCameras();
+  final backCamera = cameras.firstWhere(
+    (camera) => camera.lensDirection == CameraLensDirection.back,
+  );
+  return backCamera;
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: CameraScreen(camera: camera));
+    return MaterialApp(home: const LoadingScreen());
+  }
+}
+
+class LoadingScreen extends StatefulWidget {
+  const new({super.key});
+
+  @override
+  State<StatefulWidget> createState() => _LoadingScreenState();
+}
+
+class _LoadingScreenState extends State<LoadingScreen> {
+  late ValueNotifier<int> progressValue;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<CameraDescription>(
+      future: _setupModelAndGetCamera(progressValue),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text("Couldn't download model!! ${snapshot.error}");
+        }
+
+        if (snapshot.connectionState == .done) {
+          return CameraScreen(camera: snapshot.data!);
+        }
+
+        return ValueListenableBuilder(
+          valueListenable: progressValue,
+          builder: (context, progress, child) => SizedBox(
+            width: 100,
+            height: 100,
+            child: Column(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: progress * 0.01,
+                      strokeWidth: 8,
+                      backgroundColor: Colors.grey.shade300,
+                      color: Colors.green,
+                    ),
+                    Text(
+                      '$progress%',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const Text('Downloading model...'),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
