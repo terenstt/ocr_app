@@ -37,9 +37,9 @@ workflows:
         script: |
           find . -name "Podfile" -execdir pod install \;
       
-      - name: Build iOS IPA
+      - name: Build iOS
         script: |
-          flutter build ipa \
+          flutter build ios \
             --release \
             --no-codesign \
             --build-name=1.0.0 \
